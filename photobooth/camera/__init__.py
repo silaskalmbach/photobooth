@@ -25,6 +25,7 @@ from io import BytesIO
 from .PictureDimensions import PictureDimensions
 from .. import StateMachine
 from ..Threading import Workers
+from ..StateMachine import RetryEvent  # NEU: Import hinzufügen
 
 # Available camera modules as tuples of (config name, module name, class name)
 modules = (
@@ -141,6 +142,11 @@ class Camera:
     def capturePicture(self, state):
 
         self.setIdle()
+        
+        # NEU: Übergebe Communicator an Kamera für Retry-Events
+        if hasattr(self._cap, 'set_communicator'):
+            self._cap.set_communicator(self._comm)
+        
         picture = self._cap.getPicture()
         if self._rotation is not None:
             picture = picture.transpose(self._rotation)

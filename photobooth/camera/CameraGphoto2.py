@@ -17,15 +17,16 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+import time
 import io
 import logging
 
+import gphoto2 as gp
 from PIL import Image
 
-import gphoto2 as gp
-import time
-
 from .CameraInterface import CameraInterface
+from ..StateMachine import RetryEvent  # NEU
+from ..Threading import Workers  # NEU
 
 
 class CameraGphoto2(CameraInterface):
@@ -39,8 +40,13 @@ class CameraGphoto2(CameraInterface):
 
         logging.info('Using python-gphoto2 bindings')
 
+        self._comm = None  # NEU: Wird später gesetzt
         self._setupLogging()
         self._setupCamera()
+
+    # NEU: Methode zum Setzen des Communicators
+    def set_communicator(self, comm):
+        self._comm = comm
 
     def cleanup(self):
 
@@ -193,28 +199,52 @@ class CameraGphoto2(CameraInterface):
 
 
     def getPicture(self):
-        max_retries = 5
+        max_retries = 10
         retry_delay = 1.0
         
         for attempt in range(max_retries):
             try:
+                # Bei Retry: Sende Benachrichtigung
+                if attempt > 0:
+                    message = f'⚠️ Fokussierung fehlgeschlagen \n Versuch {attempt + 1}/{max_retries}'
+                    
+                    if self._comm:
+                        retry_event = RetryEvent(message, attempt + 1, max_retries)
+                        self._comm.send(Workers.MASTER, retry_event)
+                        logging.warning(message)
+                    else:
+                        logging.warning(f'{message} (no communicator available)')
+                
+                # Versuche Bildaufnahme
                 logging.info(f'Capture attempt {attempt + 1}/{max_retries}')
                 file_path = self._cap.capture(gp.GP_CAPTURE_IMAGE)
-                break  # Erfolg!
+                
+                # Erfolg!
+                if attempt > 0:
+                    logging.info('✓ Capture successful after retry')
+                break
                 
             except gp.GPhoto2Error as e:
                 logging.warning(f'Capture attempt {attempt + 1} failed: {e}')
                 
                 if attempt < max_retries - 1:
-                    logging.info(f'Retrying in {retry_delay} seconds...')
+                    # Warte vor nächstem Versuch
+                    logging.info(f'Waiting {retry_delay}s before retry...')
                     time.sleep(retry_delay)
+                    
+                    # Versuche Kamera zu "wecken"
+                    try:
+                        self._cap.capture_preview()
+                        logging.debug('Camera: Preview capture successful, camera ready')
+                    except gp.GPhoto2Error as preview_error:
+                        logging.debug(f'Camera: Preview failed: {preview_error}')
                 else:
-                    # Letzter Versuch: Erzwinge Aufnahme ohne AF-Check
-                    logging.error('All retries failed, forcing capture')
+                    # Alle Versuche fehlgeschlagen
+                    logging.error('All capture attempts failed')
                     raise
         
         # Lade Bild und gebe es zurück
         camera_file = self._cap.file_get(file_path.folder, file_path.name,
-                                        gp.GP_FILE_TYPE_NORMAL)
+                                         gp.GP_FILE_TYPE_NORMAL)
         file_data = camera_file.get_data_and_size()
         return Image.open(io.BytesIO(file_data))

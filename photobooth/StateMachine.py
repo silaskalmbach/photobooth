@@ -178,18 +178,37 @@ class GpioEvent(Event):
 class CameraEvent(Event):
 
     def __init__(self, name, picture=None):
-
         super().__init__(name)
         self._picture = picture
 
     @property
     def picture(self):
-
         return self._picture
 
 
-class WorkerEvent(Event):
+# NEU: RetryEvent für Fokus-Benachrichtigungen
+class RetryEvent(Event):
+    
+    def __init__(self, message, attempt, max_attempts):
+        super().__init__('retry')
+        self._message = message
+        self._attempt = attempt
+        self._max_attempts = max_attempts
+    
+    @property
+    def message(self):
+        return self._message
+    
+    @property
+    def attempt(self):
+        return self._attempt
+    
+    @property
+    def max_attempts(self):
+        return self._max_attempts
 
+
+class WorkerEvent(Event):
     pass
 
 
@@ -400,19 +419,20 @@ class CountdownState(State):
 class CaptureState(State):
 
     def __init__(self, num_picture):
-
         super().__init__()
-
         self._num_picture = num_picture
 
     @property
     def num_picture(self):
-
         return self._num_picture
 
     def handleEvent(self, event, context):
 
-        if isinstance(event, CameraEvent) and event.name == 'countdown':
+        if isinstance(event, RetryEvent):
+            # RetryEvent wird ignoriert, State bleibt gleich
+            # GUI kann das Event aber empfangen und anzeigen
+            pass
+        elif isinstance(event, CameraEvent) and event.name == 'countdown':
             context.state = CountdownState(self.num_picture + 1)
         elif isinstance(event, CameraEvent) and event.name == 'assemble':
             context.state = AssembleState()

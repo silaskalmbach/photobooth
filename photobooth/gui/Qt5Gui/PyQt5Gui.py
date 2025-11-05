@@ -26,7 +26,7 @@ from PyQt5 import QtWidgets
 
 from PIL import Image, ImageQt
 
-from ...StateMachine import GuiEvent, TeardownEvent
+from ...StateMachine import GuiEvent, TeardownEvent, RetryEvent  # NEU
 from ...Threading import Workers
 
 from ..GuiSkeleton import GuiSkeleton
@@ -93,6 +93,9 @@ class PyQt5Gui(GuiSkeleton):
         # Create worker thread for time consuming tasks to keep gui responsive
         self._worker = Worker.Worker(self._comm)
         self._worker.start()
+        
+        # NEU: Erstelle Label für Retry-Nachrichten
+        self._retry_label = None
 
     def _enableEscape(self):
 
@@ -236,6 +239,60 @@ class PyQt5Gui(GuiSkeleton):
             self._gui.centralWidget(), tasks, self._worker,
             lambda: self._comm.send(Workers.MASTER, GuiEvent('idle')),
             postproc_t * 1000)
+    
+    # NEU: Handler für RetryEvent
+    def showRetry(self, event):
+        """Zeigt Retry-Benachrichtigung als Overlay an"""
+        message = event.message
+        # progress = f'Versuch {event.attempt} von {event.max_attempts}'
+        # full_message = f'{message}\n{progress}'
+        
+        logging.info(f'GUI: Displaying retry notification: {message}')
+        
+        # Erstelle oder aktualisiere Retry-Label
+        if self._retry_label is None:
+            self._retry_label = QtWidgets.QLabel(self._gui)
+            self._retry_label.setStyleSheet("""
+                QLabel {
+                    background-color: rgba(255, 140, 0, 230);
+                    color: white;
+                    font-size: 70px;
+                    font-weight: bold;
+                    padding: 40px;
+                    border-radius: 20px;
+                    border: 5px solid white;
+                }
+            """)
+            self._retry_label.setAlignment(QtCore.Qt.AlignCenter)
+            self._retry_label.setWordWrap(True)
+        
+        # self._retry_label.setText(full_message)
+        self._retry_label.setText(message)
+        
+        # Positioniere in der Mitte des Bildschirms
+        label_width = int(self._gui.width() * 0.5)
+        label_height = int(self._gui.height() * 0.3)
+        self._retry_label.setGeometry(
+            (self._gui.width() - label_width) // 2,
+            (self._gui.height() - label_height) // 2,
+            label_width,
+            label_height
+        )
+        
+        # Zeige Label an
+        self._retry_label.show()
+        self._retry_label.raise_()  # Bringe in den Vordergrund
+        
+        # Auto-hide nach 3 Sekunden
+        QtCore.QTimer.singleShot(3000, self._hideRetryLabel)
+        
+        logging.debug('GUI: Retry label displayed and timer started')
+    
+    def _hideRetryLabel(self):
+        """Versteckt das Retry-Label"""
+        if self._retry_label is not None:
+            self._retry_label.hide()
+            logging.debug('GUI: Retry label hidden')
 
     def _handleKeypressEvent(self, event):
 

@@ -18,6 +18,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from .. import StateMachine
+from ..StateMachine import RetryEvent  # NEU: Import
 
 
 class GuiSkeleton:
@@ -101,3 +102,9 @@ class GuiSkeleton:
             self.showPostprocess(state)
         elif isinstance(state, StateMachine.TeardownState):
             self.teardown(state)
+        elif isinstance(state, RetryEvent):
+            self.showRetry(state)
+
+    def showRetry(self, state):
+        """To be implemented by subclasses"""
+        raise NotImplementedError()

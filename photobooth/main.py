@@ -34,7 +34,7 @@ from . import camera, gui
 from .Config import Config
 from .gpio import Gpio
 from .util import lookup_and_import
-from .StateMachine import Context, ErrorEvent
+from .StateMachine import Context, ErrorEvent, RetryEvent  # NEU: RetryEvent importieren
 from .Threading import Communicator, Workers
 from .worker import Worker
 
@@ -161,9 +161,16 @@ def mainloop(comm, context):
     while True:
         try:
             for event in comm.iter(Workers.MASTER):
-                    exit_code = context.handleEvent(event)
-                    if exit_code in (0, 123):
-                        return exit_code
+                # NEU: RetryEvent direkt an GUI weiterleiten
+                if isinstance(event, RetryEvent):
+                    logging.debug(f'Master: Forwarding RetryEvent to GUI: {event.message}')
+                    comm.send(Workers.GUI, event)
+                    continue  # Nicht an context weitergeben
+                
+                # Normale Event-Verarbeitung
+                exit_code = context.handleEvent(event)
+                if exit_code in (0, 123):
+                    return exit_code
         except Exception as e:
             logging.exception('Main: Exception "{}"'.format(e))
             comm.send(Workers.MASTER, ErrorEvent('Gpio', str(e)))
