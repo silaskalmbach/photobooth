@@ -23,6 +23,7 @@ import logging
 from PIL import Image
 
 import gphoto2 as gp
+import time
 
 from .CameraInterface import CameraInterface
 
@@ -135,10 +136,85 @@ class CameraGphoto2(CameraInterface):
         file_data = camera_file.get_data_and_size()
         return Image.open(io.BytesIO(file_data))
 
-    def getPicture(self):
+    # def getPicture(self):
 
-        file_path = self._cap.capture(gp.GP_CAPTURE_IMAGE)
+    #     file_path = self._cap.capture(gp.GP_CAPTURE_IMAGE)
+    #     camera_file = self._cap.file_get(file_path.folder, file_path.name,
+    #                                      gp.GP_FILE_TYPE_NORMAL)
+    #     file_data = camera_file.get_data_and_size()
+    #     return Image.open(io.BytesIO(file_data))
+
+
+    # def getPicture(self):
+    #     try:
+    #         # Versuche normale Aufnahme mit Autofokus
+    #         file_path = self._cap.capture(gp.GP_CAPTURE_IMAGE)
+            
+    #     except gp.GPhoto2Error as e:
+    #         logging.warning(f'Initial capture failed: {e}')
+            
+    #         # Warte länger für busy camera
+    #         time.sleep(2.0)
+            
+    #         # Zweiter Versuch ohne Config-Änderung
+    #         try:
+    #             logging.info('Retry capture without config change')
+    #             file_path = self._cap.capture(gp.GP_CAPTURE_IMAGE)
+                
+    #         except gp.GPhoto2Error as e2:
+    #             logging.warning(f'Second capture failed: {e2}')
+                
+    #             # Jetzt versuche mit Manual Focus
+    #             time.sleep(1.0)
+                
+    #             try:
+    #                 config = self._cap.get_config()
+    #                 focus_mode = config.get_child_by_name('focusmode')
+                    
+    #                 logging.info('Setting Manual focus mode')
+    #                 focus_mode.set_value('Manual')
+    #                 self._cap.set_config(config)
+                    
+    #                 time.sleep(1.0)
+                    
+    #                 # Letzter Versuch
+    #                 logging.info('Final capture attempt in Manual mode')
+    #                 file_path = self._cap.capture(gp.GP_CAPTURE_IMAGE)
+                    
+    #             except gp.GPhoto2Error as e3:
+    #                 logging.error(f'All capture attempts failed: {e3}')
+    #                 raise
+        
+    #     # Lade Bild und gebe es zurück
+    #     camera_file = self._cap.file_get(file_path.folder, file_path.name,
+    #                                     gp.GP_FILE_TYPE_NORMAL)
+    #     file_data = camera_file.get_data_and_size()
+    #     return Image.open(io.BytesIO(file_data))
+
+
+    def getPicture(self):
+        max_retries = 5
+        retry_delay = 1.0
+        
+        for attempt in range(max_retries):
+            try:
+                logging.info(f'Capture attempt {attempt + 1}/{max_retries}')
+                file_path = self._cap.capture(gp.GP_CAPTURE_IMAGE)
+                break  # Erfolg!
+                
+            except gp.GPhoto2Error as e:
+                logging.warning(f'Capture attempt {attempt + 1} failed: {e}')
+                
+                if attempt < max_retries - 1:
+                    logging.info(f'Retrying in {retry_delay} seconds...')
+                    time.sleep(retry_delay)
+                else:
+                    # Letzter Versuch: Erzwinge Aufnahme ohne AF-Check
+                    logging.error('All retries failed, forcing capture')
+                    raise
+        
+        # Lade Bild und gebe es zurück
         camera_file = self._cap.file_get(file_path.folder, file_path.name,
-                                         gp.GP_FILE_TYPE_NORMAL)
+                                        gp.GP_FILE_TYPE_NORMAL)
         file_data = camera_file.get_data_and_size()
         return Image.open(io.BytesIO(file_data))

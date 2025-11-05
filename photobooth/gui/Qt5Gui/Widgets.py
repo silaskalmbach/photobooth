@@ -72,9 +72,9 @@ class SpinningWaitClock(QtWidgets.QWidget):
                       180 / dots * math.sin(2 * math.pi * dot / dots) - 20)
 
             color = (distance + 1) / (dots + 1) * 255
-            painter.setBrush(QtGui.QBrush(QtGui.QColor(color, color, color)))
+            painter.setBrush(QtGui.QBrush(QtGui.QColor(int(color), int(color), int(color))))
 
-            painter.drawEllipse(center[0] + offset[0], center[1] + offset[1],
+            painter.drawEllipse(int(center[0] + offset[0]), int(center[1] + offset[1]),
                                 15, 15)
 
         painter.end()
@@ -143,14 +143,14 @@ class RoundProgressBar(QtWidgets.QWidget):
                                            self._outline_pen_width // 2,
                                            -self._outline_pen_width // 2,
                                            -self._outline_pen_width // 2),
-                        self._null_position * 16, -arc_length * 16)
+                        int(self._null_position * 16), int(-arc_length * 16))
 
     def _drawText(self, painter, inner_rect, inner_radius):
 
         text = '{}'.format(math.ceil(self.value))
 
         f = self.font()
-        f.setPixelSize(inner_radius * 0.8 / len(text))
+        f.setPixelSize(int(inner_radius * 0.8 / len(text)))
         painter.setFont(f)
         painter.setPen(self.palette().text().color())
 
@@ -162,8 +162,8 @@ class RoundProgressBar(QtWidgets.QWidget):
         inner_radius = outer_radius - self._outline_pen_width
         delta = (outer_radius - inner_radius) / 2
 
-        base_rect = QtCore.QRectF(1, 1, outer_radius - 2, outer_radius - 2)
-        inner_rect = QtCore.QRectF(delta, delta, inner_radius, inner_radius)
+        base_rect = QtCore.QRectF(1, 1, int(outer_radius - 2), int(outer_radius - 2))
+        inner_rect = QtCore.QRectF(int(delta), int(delta), int(inner_radius), int(inner_radius))
 
         painter = QtGui.QPainter(self)
         painter.setRenderHint(QtGui.QPainter.Antialiasing)

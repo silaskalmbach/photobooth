@@ -1,0 +1,1 @@
+.venv/bin/python -m photobooth & .venv/bin/python ./RaspiButtons/PyRaspiAutoPush.py & .venv/bin/python ./RaspiButtons/PyAutoPush_24-12-09.py & .venv/bin/python serverupload.py

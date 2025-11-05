@@ -71,9 +71,9 @@ class Welcome(QtWidgets.QFrame):
         link = QtWidgets.QLabel('<a href="{0}">{0}</a>'.format(url))
 
         lay = QtWidgets.QVBoxLayout()
-        lay.addWidget(title)
+        # lay.addWidget(title)
         lay.addLayout(btnLay)
-        lay.addWidget(link)
+        # lay.addWidget(link)
         self.setLayout(lay)
 
 
