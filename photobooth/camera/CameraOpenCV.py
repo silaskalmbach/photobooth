@@ -37,14 +37,35 @@ class CameraOpenCV(CameraInterface):
 
         logging.info('Using OpenCV')
 
+        # Find available cameras
+        self._camera_index = self._find_camera()
+        logging.info(f'Found camera at index: {self._camera_index}')
+
         self._cap = cv2.VideoCapture()
+
+    def _find_camera(self, max_cameras=10):
+        """Find first available camera index."""
+        for i in range(max_cameras):
+            cap = cv2.VideoCapture(i, cv2.CAP_V4L2)
+            if cap.isOpened():
+                logging.info(f'Camera found at index {i}')
+                cap.release()
+                return i
+        logging.error('No cameras found!')
+        return 0  # Fallback to default
 
     def setActive(self):
 
         if not self._cap.isOpened():
-            self._cap.open(0)
+            # Use V4L2 backend explicitly for Linux
+            self._cap.open(self._camera_index, cv2.CAP_V4L2)
             if not self._cap.isOpened():
+                logging.error(f'Failed to open camera {self._camera_index} with V4L2')
                 raise RuntimeError('Camera could not be opened')
+
+            # Set camera properties for better compatibility
+            self._cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+            logging.info(f'Camera {self._camera_index} opened successfully')
 
     def setIdle(self):
 
